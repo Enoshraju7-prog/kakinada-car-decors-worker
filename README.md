@@ -1,23 +1,53 @@
-# Kakinada Car Decors — Autonomous AI Task Worker
+# Kakinada Car Decors
 
-A working inventory application with a bounded AI worker that uses real application tools. Built by Enosh for a continuing car-accessories business; the CentrAlign AI Engineering Intern submission is the first milestone.
-
-**What the worker does:** takes a natural-language goal, reads a supplied bill, checks existing records, proposes exact parts and families, saves an editable intake draft and reads it back. A different goal checks exact-SKU shortages, saves a report and verifies it. A partner reviews uncertainty, sets selling prices and authorizes posting. A bill never proves goods arrived.
-
-React shows it → FastAPI controls it → PostgreSQL remembers it → business services protect it → PydanticAI automates it → tests prove it.
-
-This public snapshot contains working source and **synthetic evidence only**, without private shop history, credentials, supplier photographs or live database backups. The deployed shop pilot is private; reproduce the generated demo below rather than use real company data.
+I built this app to help a car-accessories shop manage purchases, stock and sales. Partners can upload a supplier bill, review the items, confirm what arrived and sell from available stock. The AI assistant helps with reading bills and preparing the records.
 
 ## Start here
 
-- [Architecture, flow and design decisions](docs/ARCHITECTURE.md)
-- [What was actually verified and what remains](docs/VERIFICATION.md)
-- [Short demo walkthrough](docs/DEMO.md)
-- [Models, APIs, components and AI assistance](docs/PROVENANCE.md)
+- **Live app:** [kcd.mmcarcarekakinada.co.in](https://kcd.mmcarcarekakinada.co.in/) - partner sign-in required.
+- **Local app after setup:** [127.0.0.1:8000](http://127.0.0.1:8000/).
+- **My current recording demo:** [127.0.0.1:8003](http://127.0.0.1:8003/) - a separate local database with generated test data. This address works only on the computer running it.
+- [Demo prompts and recording script](docs/DEMO.md)
+- [Architecture details](docs/ARCHITECTURE.md)
+- [Test results](docs/VERIFICATION.md)
+- [Libraries, models and AI coding assistance](docs/PROVENANCE.md)
+
+The live app contains private shop records. This repository contains source code and generated test evidence. Localhost links are not public demos, and no passwords or API keys are included here.
+
+## How the shop flow works
+
+1. Upload a bill or type the items bought. The assistant reads it, checks existing products and prepares an editable draft.
+2. The partner checks the products, quantities and buying rates, then sets selling prices and approves the draft.
+3. The purchase is saved as **incoming stock**. It cannot be sold yet.
+4. When the delivery reaches the shop, the partner counts it and approves the received goods. Accepted items become **available stock**.
+5. Making a sale reduces available stock and saves the sale and stock history.
+
+Goods without a bill can also be recorded through a partner-confirmed delivery. Damaged or on-hold items stay separate. A supplier bill by itself never confirms delivery.
+
+## Architecture in simple terms
+
+**React shows it → FastAPI controls it → PostgreSQL remembers it → business services protect it → PydanticAI automates it → tests prove it.**
+
+- **React:** the screens partners use to upload bills, review drafts, receive goods and make sales.
+- **FastAPI + Pydantic:** receive requests and check their fields before passing them to the business code.
+- **PostgreSQL + SQLAlchemy:** save products, purchases, receipts, sales and the history of stock changes. Alembic handles database updates.
+- **Business services:** enforce stock limits, approvals and duplicate protection. Normal stock and sales operations work without AI.
+- **PydanticAI worker:** reads a task and chooses the next tool from the results it sees. Progress and tool results are saved in PostgreSQL.
+- **Azure services:** Claude Sonnet 4.6 is the model; Document Intelligence extracts invoice fields.
+
+### What are the AI's tools?
+
+They are functions I define, such as `lookup_catalogue`, `prepare_intake`, `read_draft` and `verify_transaction`. Pydantic describes the fields each function expects. The model decides which function to call; the application checks the request and does the work.
+
+For example, “read this bill and prepare a purchase” can lead to extraction, duplicate checks, product lookup and saving a draft. Posting needs partner approval. The worker then reads the saved result back before saying it is done. A stock-report request uses the same worker with different tools.
+
+### Deployment
+
+The private pilot runs on a DigitalOcean server with the app, PostgreSQL and a separate Python worker. HTTPS protects the website; database access stays private. A backup was restored and checked before the latest release. Azure handles model and document calls. Credentials stay outside GitHub.
 
 ## Setup and run
 
-Requirements: Python 3.12+, uv, Node 22.12+ with npm, PostgreSQL 18 binaries. Local setup supports a project-owned loopback PostgreSQL cluster. On macOS it defaults to /opt/homebrew/opt/postgresql@18/bin; set KCD_PG_BIN for your installed binaries on another system. It is not a one-click cloud installer.
+You need Python 3.12+, uv, Node 22.12+ with npm, and PostgreSQL 18 binaries. On macOS, the setup script uses `/opt/homebrew/opt/postgresql@18/bin`. Set `KCD_PG_BIN` if your PostgreSQL binaries are elsewhere.
 
 ```bash
 git clone https://github.com/Enoshraju7-prog/kakinada-car-decors-worker.git
@@ -31,15 +61,18 @@ cd ..
 ./dev.sh
 ```
 
-Open http://127.0.0.1:8000. Local username is partner; the generated password is saved privately in data/local-access.txt. Setup writes ignored backend/.env and data/database-access.json, migrates separate demo/shop/test databases and preserves existing records. Never publish those files. The fresh demo database is empty.
+Open [localhost:8000](http://127.0.0.1:8000/). The username is `partner`; setup saves the generated password privately in `data/local-access.txt`. It also creates ignored configuration files and separate demo, shop and test databases. Existing records are preserved.
 
-For manual synthetic stock and sales, use Products → add a part; Receive stock → record incoming bill or counted no-bill delivery; approve physical counts; Make sale. Normal operations require no Azure service.
+To use AI, privately configure the Azure values listed in `backend/.env.example`. This code does not create an Azure resource or provide API keys. In another terminal, start the worker for the database configured in that file:
 
-## AI demo with your own Azure access
+```bash
+cd backend
+.venv/bin/python -m app.infrastructure.jobs
+```
 
-Privately configure the names in backend/.env.example: Azure Claude endpoint/key/deployment and Azure Document Intelligence endpoint/key. No model or cloud resource is created automatically. The verified model deployment was Claude Sonnet 4.6. A trained custom document classifier is not required.
+Use generated bills for testing. Manual product entry, receiving and sales work without Azure.
 
-For a scoped, generated-only evaluation:
+### Repeat the controlled generated test
 
 ```bash
 cd backend
@@ -47,25 +80,29 @@ cd backend
 .venv/bin/python -m scripts.evaluation api
 ```
 
-Open http://127.0.0.1:8001, sign in with the local partner account and use AI assistant. Attach output/pdf/generated-evaluation-bill.pdf and copy the invoice goal exactly:
+Open [localhost:8001](http://127.0.0.1:8001/), sign in and attach `output/pdf/generated-evaluation-bill.pdf` in AI assistant. Use this exact prompt:
 
 > Process the attached generated evaluation bill. Match its printed SKU and unit to the catalogue, check duplicates, prepare its purchase draft, request partner approval, then post and read it back. Do not receive goods from the bill alone.
 
-In another terminal, from backend, use the run ID displayed by the UI:
+Copy the run ID shown on screen and run:
 
 ```bash
 .venv/bin/python -m scripts.evaluation work RUN_ID
 ```
 
-Review and approve the exact draft in the UI, then run the same scoped worker command again. If corrections are needed, saved revisions invalidate prior approval. Budget exhaustion stops the run; start a newly scoped goal rather than bypass limits.
+Review the draft in the app. Approve it, then run the same command again to continue. This evaluation runner accepts only its generated fixtures and exact test goals. The normal worker accepts other natural-language goals. The local port 8003 demo is an already-configured recording workspace, not something these setup commands create.
 
-For the second goal, copy exactly:
+## What I tested
 
-> Inspect the generated evaluation inventory for exact-SKU shortages, save a shortage report and read it back.
+- **56 backend tests passed** using PostgreSQL. Frontend typecheck, build and formatting passed.
+- Actual Azure extraction saved a generated bill as an editable draft.
+- After partner review, the AI requested approval, posted the purchase and verified it.
+- The browser received **10**, sold **3** and showed **7 left**. Independent database checks matched the stock history.
+- A separate AI goal created and read back a shortage report.
 
-The scoped runner rejects unexpected catalogue records, files, goals and clarification notes. Literal fixture goals/notes are in backend/scripts/evaluation.py. For arbitrary generated tasks in your local demo, the normal worker is `.venv/bin/python -m app.infrastructure.jobs`; it processes that configured database. Start it only with data authorized for your providers. Provider outages leave manual entry and checkout available.
+[Saved flow evidence](artifacts/submission-oct8-stock.json). Physical counts and checkout were entered through the partner interface; the AI did not observe a delivery.
 
-## Checks
+Run the checks:
 
 ```bash
 cd backend
@@ -75,22 +112,16 @@ npm run build
 npm run format:check
 ```
 
-Tests require KCD_TEST_DATABASE_URL ending in /kcd_test and clear only that test database. Latest run: **56 tests passed**, with real PostgreSQL; frontend typecheck/build/format passed. Controlled-model tests are distinguished from actual Azure execution in the evidence notes.
+Backend tests require a separate `KCD_TEST_DATABASE_URL` ending in `/kcd_test`; they clear that test database.
 
-**Fresh generated flow verified on October 8:** actual Azure extraction → editable new-SKU proposal → partner price review → actual model-selected posting tools and deferred approval → incoming purchase readback → browser receipt 10 → browser sale 3 → independently verified 7 remaining. [Saved stock evidence](artifacts/submission-oct8-stock.json). Manual physical counts and checkout were performed by the partner interface; the AI did not observe a real delivery.
+## Current limits and next work
 
-## Assumptions and known limits
+Handwritten bills and vague product names can confuse the AI. One upload run saved a draft but kept asking unnecessary questions; I kept that failure in the evidence. A later reviewed posting task completed successfully. I do not claim every invoice will work.
 
-- Whole base units and explicitly confirmed pack conversions; mixed assortments need actual variant breakdown.
-- Partner-first pilot. Staff backend permissions exist but their rollout is deferred.
-- New catalogue proposals and buying interpretations require review; AI cannot reliably infer missing variants from generic descriptions.
-- The first October 8 upload run asked unnecessary synthetic/tax questions. After partner correction/price review, a **fresh posting goal completed** through exact-version approval, new-SKU/incoming purchase creation and independent readback (4 requests / 3 tools). The original unresolved run is retained; prompts do not guarantee every resumed case.
-- Actual earlier generated purchase approval/post/readback evidence exists separately. No claim that all document formats work.
-- No arbitrary browser/desktop control: the worker operates through bounded APIs in this application, as the problem scope permits.
-- Ten model-request slots and twenty tools per run; no unbounded self-repair. Leases/retries are implemented; a distributed durable workflow engine is deferred.
-- Real tax invoices, valuation/profit graphs, email delivery, off-server backup automation and native mobile apps are not complete.
-- Fresh cross-platform setup rehearsal and a recorded demo video remain to be completed. Docker is included but has not been verified by a local build.
+The worker uses this app's tools, with a limit of 10 model requests and 20 tool calls per run. It cannot control arbitrary websites. Partners confirm uncertain variants, units, prices and physical deliveries. Unknown pack conversions are rejected.
 
-Next: rehearse and record the verified intake → approved posting → physical receipt → sale walkthrough, broaden generated handwritten-bill cases, simplify partner corrections, measure hosting/AI cost and recovery, then improve reporting and mobile delivery. This project continues beyond the application deadline.
+Next I want to simplify corrections, test more bills, improve mobile receiving and add email alerts and profit reports. Real tax invoicing, email delivery and native mobile apps are not complete. Fresh setup on other operating systems and a local Docker build still need verification.
 
-AI coding assistance is disclosed in provenance. Git authorship uses Enosh's identity without a bot contributor.
+**Tech stack:** Python | FastAPI | Pydantic | PydanticAI | PostgreSQL | SQLAlchemy | Alembic | React | TypeScript | Vite | Tailwind | Azure AI | DigitalOcean
+
+Codex helped with implementation, debugging, testing and documentation. Components and references are listed in [provenance](docs/PROVENANCE.md).
