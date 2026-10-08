@@ -1,0 +1,14 @@
+[project]
+name = "kakinada-car-decors"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = ["fastapi==0.139.0", "pydantic==2.13.4", "uvicorn==0.51.0", "sqlalchemy==2.0.54", "alembic==1.20.0", "psycopg[binary]>=3.2,<4", "pydantic-settings==2.14.2", "argon2-cffi>=23,<26", "python-multipart>=0.0.20,<1", "python-dotenv>=1,<2"]
+
+[project.optional-dependencies]
+ai = ["pydantic-ai-slim[anthropic]==2.16.0", "azure-ai-documentintelligence==1.0.2", "pydantic-settings==2.14.2"]
+
+[dependency-groups]
+dev = ["httpx==0.28.1"]
+
+[tool.uv]
+package = false

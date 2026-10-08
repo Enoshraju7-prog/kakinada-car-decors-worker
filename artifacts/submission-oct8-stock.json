@@ -1,0 +1,66 @@
+{
+  "environment": "Isolated synthetic evaluation; no shop records altered",
+  "api_readback": [
+    {
+      "id": "2c6764e5-3c67-4ade-9e02-c48261328915",
+      "sku": "KCD-B63FFC0FDB53",
+      "name": "Generated Evaluation Widget",
+      "unit": "piece",
+      "available": 7,
+      "incoming": 0,
+      "damaged": 0,
+      "quarantined": 0
+    }
+  ],
+  "documents": [
+    {
+      "id": "8decddcc-229b-4395-a623-6b935f9ae325",
+      "kind": "purchase"
+    },
+    {
+      "id": "7bf1c850-2a70-4a8f-9403-37862ed1943e",
+      "kind": "receipt"
+    },
+    {
+      "id": "eb160170-6156-4b24-a255-5b36aacc6bc4",
+      "kind": "sale"
+    }
+  ],
+  "movements": [
+    {
+      "id": "0f1c7256-c46e-4ddf-9a50-f24acba7eb51",
+      "sequence": 1,
+      "transaction_id": "7bf1c850-2a70-4a8f-9403-37862ed1943e",
+      "line_id": "b9f2b5ee-ee17-4754-a847-1db8f494eae9",
+      "product_id": "2c6764e5-3c67-4ade-9e02-c48261328915",
+      "location_id": "00000000-0000-4000-8000-000000000001",
+      "available_delta": 10,
+      "damaged_delta": 0,
+      "quarantined_delta": 0,
+      "actor": "partner",
+      "created_at": "2026-10-08T08:39:56.495861+00:00",
+      "operation_id": "draft:3b1cd757-0886-5904-8192-0c1c35d636a9:v1",
+      "reversal_of": null
+    },
+    {
+      "id": "25f1b629-2421-40ff-bb4e-aafdbe9848df",
+      "sequence": 2,
+      "transaction_id": "eb160170-6156-4b24-a255-5b36aacc6bc4",
+      "line_id": "44eb1c87-dfd5-4e33-9dbc-657a0e9a29c2",
+      "product_id": "2c6764e5-3c67-4ade-9e02-c48261328915",
+      "location_id": "00000000-0000-4000-8000-000000000001",
+      "available_delta": -3,
+      "damaged_delta": 0,
+      "quarantined_delta": 0,
+      "actor": "partner",
+      "created_at": "2026-10-08T08:43:07.257221+00:00",
+      "operation_id": "6dfeb6f3-6b0f-4b7b-b332-5a6d18728b9e",
+      "reversal_of": null
+    }
+  ],
+  "reconciliation": {
+    "ok": true,
+    "mismatches": []
+  },
+  "steps": "Actual Azure extraction and new-SKU intake; partner price review; actual Azure deferred approval/post/readback; browser receipt 10; browser sale 3; independent API and database readback 7."
+}

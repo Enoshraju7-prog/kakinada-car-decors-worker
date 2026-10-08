@@ -1,0 +1,19 @@
+{
+  "id": "be176a4a-e583-407c-be6c-639fd83ea616",
+  "status": "complete",
+  "requests_used": 2,
+  "tools_used": 1,
+  "error": null,
+  "evidence": {
+    "summary": "Draft 0a9d82f5-2d53-5f8b-9bbb-8b43909f305e (version 2, status: pending) \u2014 synthetic evaluation intake. Here is a summary of the saved draft fields:\n\n| Field | Saved Value |\n|---|---|\n| Line Description | Generated evaluation widget (SKU: EVAL-GENERATED-001) |\n| Proposed Name | Generated Evaluation Widget |\n| Family | Evaluation Widgets |\n| Category | Evaluation / Test Parts |\n| Quantity | 10 piece |\n| Buying Rate | INR 100.00 (10,000 paise) per piece |\n| Line Amount | INR 1,000.00 (1,00,000 paise) |\n| Selling Price | INR 200.00 (20,000 paise) \u2014 partner-entered test value |\n| Supplier | GENERATED EVALUATION SUPPLIER |\n| Invoice | EVAL-BILL-001 dated 04 Oct 2026 |\n| Product Compatibility | Unknown (not specified) |\n| GSTIN / HSN / Tax | Not present on source bill |\n| Issues | None flagged |\n\nThis is intentionally generated test data in an isolated synthetic evaluation database. No posting, approval request, goods receipt, or real-world part number verification was performed.",
+    "unresolved": [],
+    "evidence_ids": [
+      "0a9d82f5-2d53-5f8b-9bbb-8b43909f305e"
+    ]
+  },
+  "tools": [
+    "read_draft"
+  ],
+  "data_origin": "Generated data only in kcd_submission_oct8",
+  "provider": "Existing Azure-hosted Claude Sonnet 4.6, actual call"
+}

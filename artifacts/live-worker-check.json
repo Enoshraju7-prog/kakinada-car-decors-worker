@@ -1,0 +1,20 @@
+{
+  "id": "40f6dadc-598c-4ccd-973a-6dc4b2fa1e18",
+  "status": "complete",
+  "requests_used": 4,
+  "tools_used": 3,
+  "error": null,
+  "evidence": {
+    "summary": "Inventory was queried for low-stock SKUs, a shortage report was saved and read back. One SKU is below threshold:\n\n| SKU | Name | Available | Incoming | Threshold | Unit |\n|---|---|---|---|---|---|\n| EVAL-GENERATED-001 | Generated evaluation widget | 0 | 0 | 3 | piece |\n\nThis item has zero stock and zero incoming, against a minimum threshold of 3 pieces \u2014 a confirmed shortage requiring replenishment.\n\nSaved report ID: **1df6c8a4-5436-5d0d-8c5c-7e508cdb89f0** (created 2026-10-04T17:21:37 UTC).",
+    "unresolved": [],
+    "evidence_ids": [
+      "1df6c8a4-5436-5d0d-8c5c-7e508cdb89f0"
+    ]
+  },
+  "tools": [
+    "query_inventory",
+    "save_shortage_report",
+    "read_report"
+  ],
+  "data_origin": "Only hard-coded generated widget above; no imported/demo/shop records queried"
+}

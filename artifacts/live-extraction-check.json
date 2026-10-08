@@ -1,0 +1,349 @@
+{
+  "classification": {
+    "kind": "invoice",
+    "confidence": 0.95
+  },
+  "documents": [
+    {
+      "docType": "invoice",
+      "boundingRegions": [
+        {
+          "pageNumber": 1,
+          "polygon": [
+            0,
+            0,
+            8.2639,
+            0,
+            8.2639,
+            11.6944,
+            0,
+            11.6944
+          ]
+        }
+      ],
+      "fields": {
+        "CustomerName": {
+          "type": "string",
+          "valueString": "Generated evaluation buyer",
+          "content": "Generated evaluation buyer",
+          "boundingRegions": [
+            {
+              "pageNumber": 1,
+              "polygon": [
+                1.1131,
+                2.9748,
+                3.1817,
+                2.9808,
+                3.1811,
+                3.1758,
+                1.1125,
+                3.1698
+              ]
+            }
+          ],
+          "confidence": 0.438,
+          "spans": [
+            {
+              "offset": 146,
+              "length": 26
+            }
+          ]
+        },
+        "InvoiceDate": {
+          "type": "date",
+          "valueDate": "2026-10-04",
+          "content": "04 October 2026",
+          "boundingRegions": [
+            {
+              "pageNumber": 1,
+              "polygon": [
+                1.5763,
+                2.6129,
+                2.8213,
+                2.6122,
+                2.8214,
+                2.7973,
+                1.5764,
+                2.798
+              ]
+            }
+          ],
+          "confidence": 0.928,
+          "spans": [
+            {
+              "offset": 123,
+              "length": 15
+            }
+          ]
+        },
+        "InvoiceId": {
+          "type": "string",
+          "valueString": "EVAL-BILL-001",
+          "content": "EVAL-BILL-001",
+          "boundingRegions": [
+            {
+              "pageNumber": 1,
+              "polygon": [
+                2.2125,
+                2.1819,
+                3.6037,
+                2.1781,
+                3.6037,
+                2.3948,
+                2.2122,
+                2.4026
+              ]
+            }
+          ],
+          "confidence": 0.98,
+          "spans": [
+            {
+              "offset": 95,
+              "length": 13
+            }
+          ]
+        },
+        "InvoiceTotal": {
+          "type": "currency",
+          "valueCurrency": {
+            "currencySymbol": "INR",
+            "amount": 1000.0,
+            "currencyCode": "INR"
+          },
+          "content": "INR 1000.00",
+          "boundingRegions": [
+            {
+              "pageNumber": 1,
+              "polygon": [
+                6.5167,
+                6.1565,
+                7.6418,
+                6.1587,
+                7.6414,
+                6.3663,
+                6.5163,
+                6.3641
+              ]
+            }
+          ],
+          "confidence": 0.648,
+          "spans": [
+            {
+              "offset": 308,
+              "length": 11
+            }
+          ]
+        },
+        "Items": {
+          "type": "array",
+          "valueArray": [
+            {
+              "type": "object",
+              "valueObject": {
+                "Amount": {
+                  "type": "currency",
+                  "valueCurrency": {
+                    "amount": 1000.0,
+                    "currencyCode": "INR"
+                  },
+                  "content": "1000.00",
+                  "boundingRegions": [
+                    {
+                      "pageNumber": 1,
+                      "polygon": [
+                        6.8089,
+                        5.0248,
+                        7.3159,
+                        5.0263,
+                        7.3159,
+                        5.1734,
+                        6.8087,
+                        5.1734
+                      ]
+                    }
+                  ],
+                  "confidence": 0.944,
+                  "spans": [
+                    {
+                      "offset": 275,
+                      "length": 7
+                    }
+                  ]
+                },
+                "Description": {
+                  "type": "string",
+                  "valueString": "Generated evaluation widget",
+                  "content": "Generated evaluation widget",
+                  "boundingRegions": [
+                    {
+                      "pageNumber": 1,
+                      "polygon": [
+                        0.7438,
+                        5.0224,
+                        2.5357,
+                        5.0227,
+                        2.5357,
+                        5.1907,
+                        0.7438,
+                        5.1904
+                      ]
+                    }
+                  ],
+                  "confidence": 0.924,
+                  "spans": [
+                    {
+                      "offset": 231,
+                      "length": 27
+                    }
+                  ]
+                },
+                "Quantity": {
+                  "type": "number",
+                  "valueNumber": 10,
+                  "content": "10",
+                  "boundingRegions": [
+                    {
+                      "pageNumber": 1,
+                      "polygon": [
+                        4.4916,
+                        5.0318,
+                        4.6431,
+                        5.0334,
+                        4.6431,
+                        5.1654,
+                        4.4913,
+                        5.1648
+                      ]
+                    }
+                  ],
+                  "confidence": 0.943,
+                  "spans": [
+                    {
+                      "offset": 259,
+                      "length": 2
+                    }
+                  ]
+                },
+                "Unit": {
+                  "type": "string",
+                  "valueString": "piece",
+                  "content": "piece",
+                  "boundingRegions": [
+                    {
+                      "pageNumber": 1,
+                      "polygon": [
+                        5.3136,
+                        5.0393,
+                        5.6597,
+                        5.0385,
+                        5.6597,
+                        5.1815,
+                        5.3139,
+                        5.1848
+                      ]
+                    }
+                  ],
+                  "confidence": 0.943,
+                  "spans": [
+                    {
+                      "offset": 262,
+                      "length": 5
+                    }
+                  ]
+                },
+                "UnitPrice": {
+                  "type": "currency",
+                  "valueCurrency": {
+                    "amount": 100.0,
+                    "currencyCode": "INR"
+                  },
+                  "content": "100.00",
+                  "boundingRegions": [
+                    {
+                      "pageNumber": 1,
+                      "polygon": [
+                        6.088,
+                        5.0273,
+                        6.5163,
+                        5.0285,
+                        6.5163,
+                        5.1734,
+                        6.0877,
+                        5.1734
+                      ]
+                    }
+                  ],
+                  "confidence": 0.944,
+                  "spans": [
+                    {
+                      "offset": 268,
+                      "length": 6
+                    }
+                  ]
+                }
+              },
+              "content": "Generated evaluation widget\n10\npiece\n100.00\n1000.00",
+              "boundingRegions": [
+                {
+                  "pageNumber": 1,
+                  "polygon": [
+                    0.7438,
+                    5.0163,
+                    7.3161,
+                    5.0255,
+                    7.3159,
+                    5.1979,
+                    0.7436,
+                    5.1887
+                  ]
+                }
+              ],
+              "confidence": 0.923,
+              "spans": [
+                {
+                  "offset": 231,
+                  "length": 51
+                }
+              ]
+            }
+          ]
+        },
+        "VendorName": {
+          "type": "string",
+          "valueString": "GENERATED EVALUATION SUPPLIER",
+          "content": "GENERATED EVALUATION SUPPLIER",
+          "boundingRegions": [
+            {
+              "pageNumber": 1,
+              "polygon": [
+                0.586,
+                0.5357,
+                6.1965,
+                0.5333,
+                6.1966,
+                0.8273,
+                0.5861,
+                0.8297
+              ]
+            }
+          ],
+          "confidence": 0.886,
+          "spans": [
+            {
+              "offset": 0,
+              "length": 29
+            }
+          ]
+        }
+      },
+      "confidence": 1,
+      "spans": [
+        {
+          "offset": 0,
+          "length": 609
+        }
+      ]
+    }
+  ],
+  "content": "GENERATED EVALUATION SUPPLIER\nSYNTHETIC TEST INVOICE - NO REAL BUSINESS DATA\nSupplier invoice: EVAL-BILL-001\nInvoice date: 04 October 2026\nBuyer: Generated evaluation buyer\nCurrency: INR\nDescription / SKU\nQuantity\nUnit\nRate\nAmount\nGenerated evaluation widget\n10\npiece\n100.00\n1000.00\nEVAL-GENERATED-001\nTOTAL INR 1000.00\nTax fields intentionally absent. This is an extraction fixture only.\nNo GSTIN, HSN or tax rate is invented.\nAn invoice does not confirm physical arrival of goods.\nReceipt counts must be recorded and approved separately.\nGenerated solely for the Kakinada Car Decors evaluation. Page 1 of 1."
+}

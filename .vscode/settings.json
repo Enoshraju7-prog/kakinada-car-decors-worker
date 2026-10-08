@@ -1,0 +1,7 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/backend/.venv/bin/python",
+  "files.exclude": {"**/__pycache__": true},
+  "editor.insertSpaces": true,
+  "editor.tabSize": 4
+}
+

@@ -1,0 +1,21 @@
+{
+  "id": "a83d8995-2957-41cf-8756-da4e6c89634d",
+  "status": "complete",
+  "requests_used": 4,
+  "tools_used": 3,
+  "error": null,
+  "evidence": {
+    "summary": "Shortage inspection complete for this isolated synthetic evaluation database.\n\n**Inventory query:** Returned no results \u2014 the catalogue contains no saved products/SKUs.\n**Shortage report saved:** `dd0806b5-45d1-5651-9b2a-b403bdad6c15` (created 2026-10-08T08:34:12Z)\n**Report read back:** Confirmed empty \u2014 `data: []`\n\n**Conclusion:** The evaluation database has an empty catalogue. There are no SKUs, no stock levels, and therefore no shortages to report. No products were created and no stock was posted.",
+    "unresolved": [],
+    "evidence_ids": [
+      "dd0806b5-45d1-5651-9b2a-b403bdad6c15"
+    ]
+  },
+  "tools": [
+    "query_inventory",
+    "save_shortage_report",
+    "read_report"
+  ],
+  "data_origin": "Generated data only in kcd_submission_oct8",
+  "provider": "Existing Azure-hosted Claude Sonnet 4.6, actual call"
+}

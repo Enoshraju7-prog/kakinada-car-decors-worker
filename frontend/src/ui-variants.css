@@ -1,0 +1,6 @@
+/* State variants used by the generated shadcn/Radix components. */
+@custom-variant data-open (&:is([data-state="open"], [data-open="true"]));
+@custom-variant data-closed (&:is([data-state="closed"], [data-open="false"]));
+@custom-variant data-checked (&:is([data-state="checked"], [data-checked="true"]));
+@custom-variant data-unchecked (&:is([data-state="unchecked"], [data-checked="false"]));
+@custom-variant data-disabled (&:is([data-disabled="true"], [data-disabled]));

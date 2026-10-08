@@ -1,0 +1,12 @@
+**/.venv/
+__pycache__/
+*.pyc
+.env
+data/
+backups/
+*.sqlite*
+artifacts/*.png
+**/node_modules/
+frontend/dist/
+artifacts/*.jpg
+tmp/pdfs/
