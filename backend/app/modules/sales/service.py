@@ -28,13 +28,21 @@ def sale(store, conn, data, actor, key):
         if products[vid]["kind"] == "goods" and (vid not in locked or locked[vid]["available"] < qty):
             raise RuleError(f"Not enough sellable stock for {products[vid]['sku']}")
     total = sum(l["quantity"] * l["price_paise"] for l in data["lines"])
+    customer_id = None
+    if data.get('customer'):
+        from app.modules.sales.customers import save_customer
+        customer_id = save_customer(conn, data['customer'], actor)
     tx = store.document(conn, "sale", {"payment": payment, "payment_status": "unpaid" if payment == "credit" else "recorded",
         "location_id": location, "purpose": "Counter record; not a GST invoice"}, actor, total=total)
+    if customer_id:
+        conn.execute(db.customer_sales.insert().values(id=tx, customer_id=customer_id))
     for l in data["lines"]:
         p = products[l["product_id"]]
         line = store.line(conn, tx, p, l["quantity"], price=l["price_paise"])
         if p["kind"] == "goods":
             move(conn, tx, line, p["id"], location, -l["quantity"], 0, 0, actor, key)
+    from app.modules.sales.receipts import save_receipt
+    save_receipt(conn, tx, customer_id)
     return tx
 
 

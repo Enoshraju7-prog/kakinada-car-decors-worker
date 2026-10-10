@@ -1,0 +1,150 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  font:
+    14px/1.45 Arial,
+    sans-serif;
+  color: #151515;
+  background: #eee;
+  margin: 0;
+}
+nav {
+  text-align: center;
+  padding: 16px;
+}
+button {
+  padding: 10px 20px;
+  cursor: pointer;
+}
+main {
+  background: white;
+  margin: 0 auto;
+  padding: 17mm;
+  width: 210mm;
+}
+header img {
+  width: 13mm;
+  height: 13mm;
+  object-fit: contain;
+}
+h1 {
+  font-size: 24px;
+  margin: 12px 0 4px;
+}
+h2 {
+  font-size: 20px;
+}
+p {
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  table-layout: fixed;
+}
+th,
+td {
+  text-align: left;
+  padding: 8px 5px;
+  border-bottom: 1px solid #ccc;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+th {
+  background: #edf1fb;
+}
+th:first-child {
+  width: 5%;
+}
+th:nth-child(2) {
+  width: 43%;
+}
+th:nth-child(3) {
+  width: 14%;
+}
+th:nth-child(4) {
+  width: 18%;
+}
+th:last-child {
+  width: 20%;
+}
+td:nth-child(n + 4),
+th:nth-child(n + 4) {
+  text-align: right;
+}
+small {
+  display: block;
+  font-size: 10px;
+  margin-top: 3px;
+}
+footer {
+  font-size: 11px;
+  margin-top: 20px;
+}
+.thermal main {
+  width: 80mm;
+  padding: 4mm;
+  font-size: 11px;
+}
+.thermal h1 {
+  font-size: 17px;
+}
+.thermal h2 {
+  font-size: 14px;
+}
+.thermal th,
+.thermal td {
+  padding: 5px 2px;
+}
+.thermal th:first-child {
+  width: 5%;
+}
+.thermal th:nth-child(2) {
+  width: 35%;
+}
+.thermal th:nth-child(3) {
+  width: 18%;
+}
+.thermal th:nth-child(4) {
+  width: 20%;
+}
+.thermal th:last-child {
+  width: 22%;
+}
+.thermal small {
+  font-size: 8px;
+}
+@page {
+  size: A4;
+  margin: 0;
+}
+@page thermal {
+  size: 80mm 250mm;
+  margin: 0;
+}
+.thermal {
+  page: thermal;
+}
+@media print {
+  body {
+    background: white;
+  }
+  nav {
+    display: none;
+  }
+  main {
+    margin: 0;
+  }
+  thead {
+    display: table-header-group;
+  }
+  tr {
+    break-inside: avoid;
+  }
+  footer {
+    break-inside: avoid;
+  }
+}

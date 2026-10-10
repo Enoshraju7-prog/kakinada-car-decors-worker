@@ -305,7 +305,11 @@ export default function App() {
                 />
               ) : null}
               {view === "sale" ? (
-                <Sale products={state.products} post={post} />
+                <Sale
+                  products={state.products}
+                  post={post}
+                  partner={user.role === "partner"}
+                />
               ) : null}
               {view === "history" ? (
                 <History

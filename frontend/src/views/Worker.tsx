@@ -14,6 +14,8 @@ import {
   Clock,
 } from "@/lib/icons";
 
+import { SalesHistoryReport } from "@/components/sales-history-report";
+
 const AssistantReport = lazy(() => import("@/components/assistant-report"));
 
 const statusLabels: Record<string, string> = {
@@ -38,6 +40,7 @@ const toolLabels: Record<string, string> = {
   post_approved_draft: "Save the approved draft",
   verify_transaction: "Verify saved records",
   query_inventory: "Check current stock",
+  save_sales_report: "Find sales by date and save the report",
   save_shortage_report: "Save the low-stock report",
   read_report: "Verify the saved report",
   query_order_reviews: "Review ordered goods",
@@ -285,6 +288,11 @@ export default function Worker({
                 <AssistantReport text={selected.evidence.summary} />
               </Suspense>
             ) : null}
+            {(selected.steps ?? [])
+              .filter((step) => step.tool === "read_report")
+              .map((step) => (
+                <SalesHistoryReport key={step.id} result={step.result} />
+              ))}
             {selected.evidence?.unresolved?.map((q, i) => (
               <p key={i} className="form-error">
                 Needs clarification: {q}

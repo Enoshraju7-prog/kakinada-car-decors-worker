@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Literal
 from uuid import UUID
 from fastapi import FastAPI, Header, Request, UploadFile, File, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import Field, StrictInt, StrictBool, ValidationError
 from sqlalchemy import select
@@ -18,8 +18,12 @@ from app.workflows import drafts
 from app.modules.inventory.service import reconcile
 from app.ledger import RuleError, identifier, now
 from app.legacy_main import Input, Product, Purchase, PurchaseLine, Sale, StockReturn
+from app.modules.sales.customers import CustomerDetails, CustomerPhone, lookup_customer, customer_history
 
 ROOT = Path(__file__).resolve().parents[2]
+
+class CustomerSale(Sale):
+    customer: CustomerDetails | None = None
 
 class QuickProduct(Product):
     family_name: str | None = Field(default=None, max_length=200)
@@ -175,7 +179,7 @@ def create_app(engine=None, mode=None):
             response = await call_next(request)
         except RuleError as exc:
             response = JSONResponse({"detail": str(exc)}, status_code=exc.status)
-        response.headers["Cache-Control"] = "no-store"
+        response.headers["Cache-Control"] = "private, no-store" if response.headers.get('Cache-Control', '').startswith('private') else "no-store"
         response.headers["X-Content-Type-Options"] = "nosniff"
         if request.url.path not in {"/docs", "/redoc"}:
             response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'"
@@ -212,6 +216,8 @@ def create_app(engine=None, mode=None):
         if operation != "sale":
             auth.require_partner(user)
         data = payload.model_dump()
+        if operation == 'sale' and data.get('customer') is None:
+            data.pop('customer', None)  # Keep existing walk-in retry fingerprints.
         if operation == 'product':
             if data.get('purchase_price_paise') is None:
                 data.pop('purchase_price_paise', None)
@@ -269,8 +275,49 @@ def create_app(engine=None, mode=None):
         return post('unbilled_receipt', payload, idempotency_key, request.state.user)
 
     @application.post("/api/sales")
-    def sell(payload: Sale, request: Request, idempotency_key: str = Header(max_length=200)):
+    def sell(payload: CustomerSale, request: Request, idempotency_key: str = Header(max_length=200)):
         return post("sale", payload, idempotency_key, request.state.user)
+
+    @application.post('/api/customers/lookup')
+    def find_customer(payload: CustomerPhone, request: Request):
+        auth.require_partner(request.state.user)
+        with engine.connect() as conn:
+            return {'customer': lookup_customer(conn, payload.phone)}
+
+    @application.get('/api/customers/{customer_id}')
+    def read_customer(customer_id: UUID, request: Request, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=50)):
+        auth.require_partner(request.state.user)
+        with engine.connect() as conn:
+            return customer_history(conn, str(customer_id), limit, offset)
+
+    @application.get('/api/sales/{sale_id}/customer')
+    def sale_customer(sale_id: UUID, request: Request):
+        auth.require_partner(request.state.user)
+        with engine.connect() as conn:
+            customer_id = conn.execute(select(db.customer_sales.c.customer_id).where(db.customer_sales.c.id == str(sale_id))).scalar()
+            return customer_history(conn, customer_id) if customer_id else {'customer': None, 'purchases': [], 'has_more': False}
+
+    @application.get('/api/sales/{sale_id}/receipt.pdf')
+    def sale_receipt_pdf(sale_id: UUID, request: Request,
+                         paper: Literal['a4', '80mm'] = Query('a4', alias='format')):
+        from app.modules.sales.receipts import read_receipt, render_pdf
+        with engine.connect() as conn:
+            receipt = read_receipt(conn, str(sale_id), request.state.user['role'])
+        try:
+            content = render_pdf(receipt, paper)
+        except Exception:
+            raise RuleError('Sale saved - retry bill. PDF could not be generated.', 503) from None
+        return Response(content, media_type='application/pdf', headers={
+            'Cache-Control': 'private, no-store',
+            'Content-Disposition': f'inline; filename="{receipt["number"]}-{paper}.pdf"'})
+
+    @application.get('/api/sales/{sale_id}/receipt/print')
+    def sale_receipt_print(sale_id: UUID, request: Request,
+                           paper: Literal['a4', '80mm'] = Query('a4', alias='format')):
+        from app.modules.sales.receipts import read_receipt, render_print_html
+        with engine.connect() as conn:
+            receipt = read_receipt(conn, str(sale_id), request.state.user['role'])
+        return HTMLResponse(render_print_html(receipt, paper), headers={'Cache-Control': 'private, no-store'})
 
     @application.post('/api/prices')
     def set_prices(payload: Prices, request: Request, idempotency_key: str = Header(max_length=200)):

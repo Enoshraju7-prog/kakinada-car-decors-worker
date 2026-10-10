@@ -12,6 +12,10 @@ from app.ledger import RuleError, identifier, now, required
 
 
 def fingerprint(operation, payload, actor):
+    if operation == 'sale' and payload.get('customer'):
+        from app.modules.sales.customers import phone_key
+        # A keyed digest prevents offline guessing of contact details in retry records.
+        return phone_key(json.dumps([operation, payload, actor], sort_keys=True, separators=(",", ":")))
     return hashlib.sha256(json.dumps([operation, payload, actor], sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 

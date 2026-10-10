@@ -40,7 +40,7 @@ export default function Stock({
   navigate: (view: View) => void;
 }) {
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("available");
   const goods = state.products.filter((p) => p.kind === "goods");
   const low = goods.filter((p) => p.low_stock);
   const reviews = state.order_reviews ?? [];
@@ -51,6 +51,7 @@ export default function Stock({
         .toLowerCase()
         .includes(search.toLowerCase()) &&
       (filter === "all" ||
+        (filter === "available" && p.kind === "goods" && p.available > 0) ||
         (filter === "low" && p.low_stock) ||
         (filter === "incoming" && p.incoming > 0)),
   );
@@ -165,6 +166,9 @@ export default function Stock({
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           >
+            <NativeSelectOption value="available">
+              Available stock
+            </NativeSelectOption>
             <NativeSelectOption value="all">All products</NativeSelectOption>
             <NativeSelectOption value="low">Low stock</NativeSelectOption>
             <NativeSelectOption value="incoming">

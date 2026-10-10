@@ -161,6 +161,44 @@ export async function postVerified(path: string, payload: unknown) {
           "Saved transaction verification failed. Retry the same details.",
         );
     }
+    if (path === "/api/sales" && (payload as { customer?: unknown }).customer) {
+      const expected = (
+        payload as {
+          customer: {
+            id?: string;
+            name: string;
+            phone: string;
+            address: string;
+          };
+        }
+      ).customer;
+      const saved = await api<{
+        customer: {
+          id: string;
+          name: string;
+          phone: string;
+          address: string;
+        } | null;
+      }>(`/api/sales/${result.id}/customer`);
+      const digits = expected.phone.replace(/\D/g, "");
+      const mobile =
+        digits.length === 12 && digits.startsWith("91")
+          ? digits.slice(2)
+          : digits.length === 11 && digits.startsWith("0")
+            ? digits.slice(1)
+            : digits;
+      if (
+        !saved.customer ||
+        saved.customer.name !== expected.name.trim() ||
+        saved.customer.address !== expected.address.trim() ||
+        saved.customer.phone !== "+91" + mobile ||
+        (expected.id && saved.customer.id !== expected.id)
+      ) {
+        throw new Error(
+          "Saved customer verification failed. Retry the same sale details.",
+        );
+      }
+    }
     const state = await readState();
     if (
       path === "/api/products" &&

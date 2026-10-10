@@ -52,6 +52,257 @@ class PostgreSQLTests(unittest.TestCase):
     def balance(self):
         return next(p for p in self.store.state()['products'] if p['id']==self.pid)
 
+    def test_sales_history_ist_dates_snapshots_pagination_and_privacy(self):
+        from datetime import date
+        from app.modules.sales.history import sales_history
+        profile = self.customer_setup()
+        a = self.customer_sale(profile, 'history-a')
+        self.post('return', dict(sale_id=a['id'], reason='Synthetic return',
+            lines=[dict(sale_line_id=a['lines'][0]['id'], quantity=1)]))
+        b = self.sell()
+        self.post('reversal', dict(transaction_id=b['id'], reason='Synthetic void', evidence='Test'))
+        # Posted history is immutable: fixture timestamps are supplied at creation.
+        with patch('app.workflows.posting.now', return_value='2026-09-30T18:30:00+00:00'):
+            c_sale = self.sell()
+        with patch('app.workflows.posting.now', return_value='2026-09-30T18:29:59+00:00'):
+            d_sale = self.sell()
+        with self.engine.connect() as c:
+            october = sales_history(c, date(2026,10,1), date(2026,10,1))
+            self.assertEqual([x['order_id'] for x in october['sales']], [c_sale['id']])
+            september = sales_history(c, date(2026,9,30), date(2026,9,30))
+            self.assertEqual([x['order_id'] for x in september['sales']], [d_sale['id']])
+            report = sales_history(c, date(2026,1,1), date(2026,12,31))
+            by_id = {x['order_id']:x for x in report['sales']}
+            self.assertEqual(by_id[a['id']]['items'][0]['returned_quantity'], 1)
+            self.assertEqual(by_id[b['id']]['status'], 'VOID')
+            self.assertEqual(report['recorded_sales_total_paise'], 3000)
+            self.assertTrue(by_id[a['id']]['customer_reference'])
+            self.assertEqual(by_id[a['id']]['items'][0]['name'], 'Synthetic')
+            import json
+            payload = json.dumps(report)
+            for private in profile.values():
+                self.assertNotIn(private, payload)
+            self.assertEqual(sales_history(c, date(2026,1,1),date(2026,12,31),a['id'])['sale_count'],1)
+            self.assertEqual(sales_history(c, date(2025,1,1),date(2025,1,1))['sales'],[])
+            with self.assertRaises(RuleError): sales_history(c,date(2026,10,2),date(2026,10,1))
+            with self.assertRaises(RuleError): sales_history(c,date(2025,1,1),date(2026,12,31))
+        # Enough service-only sales to exercise pagination without stock effects.
+        service = self.post('product',dict(sku='SERVICE-HISTORY',name='Fitting',category='Services',unit='service',kind='service',threshold=0,conversions={}))
+        for i in range(51):
+            self.post('sale',dict(lines=[dict(product_id=service['id'],quantity=1,price_paise=100)]))
+        with self.engine.connect() as c:
+            report = sales_history(c,date(2026,1,1),date(2026,12,31))
+            self.assertTrue(report['has_more'])
+            next_page = sales_history(c,date(2026,1,1),date(2026,12,31),offset=report['next_offset'])
+            self.assertFalse(next_page['has_more'])
+            self.assertFalse({x['order_id'] for x in report['sales']} & {x['order_id'] for x in next_page['sales']})
+            self.assertEqual(report['sale_count'],55)
+
+    def customer_setup(self):
+        from cryptography.fernet import Fernet
+        self.enterContext(patch.dict(os.environ, {'KCD_CUSTOMER_ENCRYPTION_KEYS': Fernet.generate_key().decode(),
+                                                   'KCD_CUSTOMER_LOOKUP_KEY': 'a'*64}))
+        auth.create_user(self.engine, 'partner', 'test-partner-password', 'partner')
+        self.receive(self.bill(), 10)
+        return dict(name='Synthetic Customer', phone='9876543210', address='Synthetic Street')
+
+    def customer_sale(self, customer, key):
+        return self.store.post('sale', dict(customer=customer, payment='upi',
+            lines=[dict(product_id=self.pid, quantity=1, price_paise=1000)]), key, 'partner')
+
+    def test_customer_reuse_replay_updates_and_private_history(self):
+        from app.modules.sales.customers import lookup_customer, customer_history
+        customer = self.customer_setup()
+        first = self.customer_sale(customer, 'customer-sale-1')
+        self.assertEqual(first, self.customer_sale(customer, 'customer-sale-1'))
+        second = self.customer_sale({**customer, 'phone': '+91 98765 43210'}, 'customer-sale-2')
+        with self.engine.connect() as c:
+            saved = lookup_customer(c, '09876543210')
+            history = customer_history(c, saved['id'])
+            self.assertEqual(len(c.execute(select(db.customers)).all()), 1)
+            self.assertEqual({s['id'] for s in history['purchases']}, {first['id'], second['id']})
+            self.assertTrue(all(s['created_at'] for s in history['purchases']))
+            self.assertTrue(all(s['items'] == [{'name':'Synthetic','sku':'TEST','quantity':1,'unit':'piece'}] for s in history['purchases']))
+            for table in (db.customers, db.documents, db.requests, db.audit, db.outbox):
+                raw = str(c.execute(select(table)).mappings().all())
+                for private in ['Synthetic Customer', '9876543210', 'Synthetic Street']:
+                    self.assertNotIn(private, raw)
+        with self.assertRaises(RuleError):
+            self.customer_sale({**customer, 'name':'Different name'}, 'conflicting-customer')
+        self.customer_sale({**saved, 'name':'Updated Customer', 'address':''}, 'customer-sale-3')
+        with self.engine.connect() as c:
+            self.assertEqual(lookup_customer(c, customer['phone'])['name'], 'Updated Customer')
+            self.assertEqual(len(customer_history(c, saved['id'])['purchases']), 3)
+        self.assertEqual(self.balance()['available'], 7)
+        self.assertNotIn('customer', self.store.transaction(first['id'])['data'])
+
+    def test_customer_failed_sale_and_missing_keys_do_not_save_anything(self):
+        customer = self.customer_setup()
+        with patch.dict(os.environ, {'KCD_CUSTOMER_ENCRYPTION_KEYS':''}):
+            with self.assertRaises(RuleError): self.customer_sale(customer, 'missing-keys')
+        with self.assertRaises(RuleError): self.customer_sale({**customer,'phone':'123'}, 'bad-phone')
+        self.sell(10)
+        with self.assertRaises(RuleError): self.customer_sale(customer, 'oversold-customer')
+        with self.engine.connect() as c:
+            self.assertEqual(c.execute(select(db.customers)).all(), [])
+            self.assertEqual(c.execute(select(db.customer_sales)).all(), [])
+        self.assertEqual(self.balance()['available'], 0)
+
+    def test_customer_concurrent_first_sales_share_one_profile(self):
+        customer = self.customer_setup()
+        service = self.post('product',dict(sku='SERVICE',name='Fitting',category='Services',unit='service',kind='service'))
+        def sell_product(args):
+            pid, key = args
+            return self.store.post('sale',dict(customer=customer,lines=[dict(product_id=pid,quantity=1,price_paise=1000)]),key,'partner')
+        with concurrent.futures.ThreadPoolExecutor(max_workers=2) as pool:
+            sales = list(pool.map(sell_product, [(self.pid,'concurrent-customer-1'),(service['id'],'concurrent-customer-2')]))
+        with self.engine.connect() as c:
+            self.assertEqual(len(c.execute(select(db.customers)).all()), 1)
+            self.assertEqual(len(c.execute(select(db.customer_sales)).all()), 2)
+        self.assertEqual(len({s['id'] for s in sales}),2)
+
+    def test_customer_http_partner_only_no_cache_and_no_agent_pii(self):
+        from app.main import create_app
+        customer = self.customer_setup()
+        auth.create_user(self.engine, 'staff', 'test-staff-password', 'staff')
+        with TestClient(create_app(self.engine, 'demo')) as client:
+            self.assertEqual(client.post('/api/customers/lookup',json={'phone':customer['phone']}).status_code,401)
+            user = client.post('/api/auth/login',json=dict(username='partner',password='test-partner-password')).json()
+            h={'X-CSRF-Token':user['csrf'],'Idempotency-Key':'api-customer-sale'}
+            body=dict(customer=customer,lines=[dict(product_id=self.pid,quantity=1,price_paise=1000)])
+            sale=client.post('/api/sales',json=body,headers=h)
+            self.assertEqual(sale.status_code,200,sale.text)
+            lookup=client.post('/api/customers/lookup',json={'phone':customer['phone']},headers=h)
+            self.assertEqual(lookup.headers['cache-control'],'no-store')
+            cid=lookup.json()['customer']['id']
+            history=client.get('/api/customers/'+cid).json()
+            self.assertEqual(history['purchases'][0]['id'],sale.json()['id'])
+            for path in ['/api/state','/api/transactions/'+sale.json()['id']]:
+                self.assertNotIn(customer['name'], client.get(path).text)
+            staff=client.post('/api/auth/login',json=dict(username='staff',password='test-staff-password')).json()
+            h={'X-CSRF-Token':staff['csrf'],'Idempotency-Key':'staff-customer-sale'}
+            self.assertEqual(client.post('/api/customers/lookup',json={'phone':customer['phone']},headers=h).status_code,403)
+            self.assertEqual(client.get('/api/customers/'+cid).status_code,403)
+            self.assertEqual(client.get('/api/sales/'+sale.json()['id']+'/customer').status_code,403)
+            self.assertEqual(client.post('/api/sales',json=body,headers=h).status_code,403)
+            self.assertEqual(client.post('/api/sales',json={'lines':[{**body['lines'][0],'price_paise':0}]},headers={**h,'Idempotency-Key':'walk-in-sale'}).status_code,200)
+
+    def test_receipt_snapshot_replay_and_printing_leave_ledger_unchanged(self):
+        from app.modules.sales.receipts import read_receipt, render_pdf
+        from app.modules.sales.customers import lookup_customer
+        from io import BytesIO
+        from pypdf import PdfReader
+        customer = self.customer_setup()
+        with patch.dict(os.environ, {'KCD_RECEIPT_SHOP_NAME':'Original Shop', 'KCD_RECEIPT_SHOP_ADDRESS':'Synthetic shop address',
+                                    'KCD_RECEIPT_SHOP_PHONE':'0123456789', 'KCD_RECEIPT_SHOP_DETAILS_CONFIRMED':'1'}):
+            sale = self.customer_sale(customer, 'issued-receipt')
+            self.assertEqual(sale, self.customer_sale(customer, 'issued-receipt'))
+        with self.engine.connect() as c:
+            saved = lookup_customer(c, customer['phone'])
+        self.customer_sale({**saved, 'name':'Updated Name'}, 'updated-profile')
+        before = self.store.state()
+        with self.engine.connect() as c:
+            receipt = read_receipt(c, sale['id'], 'partner')
+            self.assertEqual(receipt['customer'], {'name':customer['name'],'phone':'+919876543210'})
+            self.assertEqual(receipt['shop']['name'], 'Original Shop')
+            self.assertTrue(receipt['shop']['confirmed'])
+            for paper in ('a4','80mm'):
+                pdf = PdfReader(BytesIO(render_pdf(receipt,paper)))
+                contents = '\n'.join(p.extract_text() for p in pdf.pages)
+                for expected in [customer['name'], '+919876543210', 'Original Shop', '10.00', 'Not a GST tax invoice']:
+                    self.assertIn(expected, contents)
+                self.assertNotIn(customer['address'], contents)
+                self.assertNotIn('Updated Name', contents)
+            for table in [db.documents,db.requests,db.audit,db.outbox,db.sale_receipts]:
+                raw = str(c.execute(select(table)).mappings().all())
+                for value in [customer['name'],customer['phone'],customer['address']]:
+                    self.assertNotIn(value,raw)
+            self.assertEqual(len(c.execute(select(db.sale_receipts)).all()),2)
+        self.assertEqual(before, self.store.state())
+        with self.engine.begin() as c:
+            with self.assertRaises(DBAPIError):
+                c.execute(db.sale_receipts.update().where(db.sale_receipts.c.id==sale['id']).values(number='EDITED'))
+
+    def test_receipt_http_security_print_escape_and_pdf_failure(self):
+        from app.main import create_app
+        customer = self.customer_setup()
+        customer['name'] = '<script>alert(1)</script> Synthetic'
+        sale = self.customer_sale(customer, 'receipt-security')
+        auth.create_user(self.engine,'staff','test-staff-password','staff')
+        with TestClient(create_app(self.engine,'demo')) as client:
+            pdf_path = f"/api/sales/{sale['id']}/receipt.pdf"
+            print_path = f"/api/sales/{sale['id']}/receipt/print"
+            self.assertEqual(client.get(pdf_path).status_code,401)
+            client.post('/api/auth/login',json=dict(username='partner',password='test-partner-password'))
+            before = self.store.state()
+            response = client.get(pdf_path+'?format=80mm')
+            self.assertEqual(response.status_code,200,response.text if response.status_code!=200 else '')
+            self.assertEqual(response.headers['content-type'],'application/pdf')
+            self.assertEqual(response.headers['cache-control'],'private, no-store')
+            html = client.get(print_path)
+            self.assertIn('&lt;script&gt;alert(1)&lt;/script&gt;',html.text)
+            self.assertNotIn('<script>alert(1)',html.text)
+            self.assertNotIn(customer['address'],html.text)
+            self.assertIn("script-src 'self'",html.headers['content-security-policy'])
+            # An existing customer-linked sale without a receipt snapshot uses labelled current details.
+            from app.ledger import identifier, now
+            with self.engine.begin() as c:
+                cid = c.execute(select(db.customer_sales.c.customer_id).where(db.customer_sales.c.id==sale['id'])).scalar_one()
+                legacy_id = identifier()
+                c.execute(db.documents.insert().values(id=legacy_id,kind='sale',actor='partner',created_at=now(),data={'payment':'cash'},total_paise=0))
+                c.execute(db.customer_sales.insert().values(id=legacy_id,customer_id=cid))
+            legacy_html = client.get(f'/api/sales/{legacy_id}/receipt/print')
+            self.assertIn('+919876543210',legacy_html.text)
+            self.assertIn('current saved profile',legacy_html.text)
+            self.assertNotIn(customer['address'],legacy_html.text)
+            self.assertEqual(client.get(pdf_path+'?format=wrong').status_code,422)
+            with self.engine.connect() as c:
+                purchase_id = c.execute(select(db.documents.c.id).where(db.documents.c.kind=='purchase')).scalar_one()
+            self.assertEqual(client.get(f'/api/sales/{purchase_id}/receipt.pdf').status_code,404)
+            with patch('app.modules.sales.receipts.render_pdf', side_effect=RuntimeError('private rendering error')):
+                failed = client.get(pdf_path)
+                self.assertEqual(failed.status_code,503)
+                self.assertIn('Sale saved - retry bill',failed.json()['detail'])
+                self.assertNotIn('private rendering error',failed.text)
+            # Read-only generation does not write any sales or movements.
+            after = self.store.state()
+            self.assertEqual(before['movements'],after['movements'])
+            client.post('/api/auth/login',json=dict(username='staff',password='test-staff-password'))
+            self.assertEqual(client.get(pdf_path).status_code,403)
+            self.assertEqual(client.get(print_path).status_code,403)
+            self.assertEqual(client.get(f'/api/sales/{legacy_id}/receipt.pdf').status_code,403)
+            walkin = self.sell(key='receipt-walkin')
+            self.assertEqual(client.get(f'/api/sales/{walkin["id"]}/receipt.pdf').status_code,200)
+
+    def test_receipt_credit_service_void_legacy_and_rollback(self):
+        from app.modules.sales.receipts import read_receipt, render_pdf
+        from io import BytesIO
+        from pypdf import PdfReader
+        from app.ledger import now, identifier
+        service = self.post('product',dict(sku='FITTING',name='Fitting charge',category='Services',unit='service',kind='service'))
+        body = dict(payment='credit',lines=[dict(product_id=service['id'],quantity=2,price_paise=10001)])
+        with patch('app.modules.sales.receipts.save_receipt',side_effect=RuleError('Snapshot failed',503)):
+            with self.assertRaises(RuleError): self.post('sale',body,'failed-receipt')
+        self.assertEqual(self.store.state()['movements'],[])
+        with self.engine.connect() as c:
+            self.assertEqual(c.execute(select(db.documents).where(db.documents.c.kind=='sale')).all(),[])
+        sale = self.post('sale',body,'service-receipt')
+        self.assertEqual(sale['movements'],[])
+        self.post('reversal',dict(transaction_id=sale['id'],reason='Synthetic reversal',evidence='Synthetic check'))
+        with self.engine.begin() as c:
+            receipt = read_receipt(c,sale['id'],'staff')
+            self.assertTrue(receipt['void'])
+            contents = ''.join(p.extract_text() for p in PdfReader(BytesIO(render_pdf(receipt,'a4'))).pages)
+            self.assertIn('200.02',contents)
+            self.assertIn('UNPAID',contents)
+            self.assertIn('VOID',contents)
+            legacy_id = identifier()
+            c.execute(db.documents.insert().values(id=legacy_id,kind='sale',actor='local-pilot',created_at=now(),
+                data={'payment':'cash'},total_paise=0))
+            legacy = read_receipt(c,legacy_id,'staff')
+            self.assertTrue(legacy['legacy'])
+            self.assertIn('Customer: Not recorded', ''.join(p.extract_text() for p in PdfReader(BytesIO(render_pdf(legacy,'80mm'))).pages))
+
     def test_explicit_family_reused_without_merging_stock(self):
         a=self.post('product',dict(sku='FAMILY-A',name='Left mirror',family_name='Side mirrors',category='Mirrors',kind='goods',unit='piece',price_paise=1000))
         b=self.post('product',dict(sku='FAMILY-B',name='Right mirror',family_name=' side MIRRORS ',category='Mirrors',kind='goods',unit='piece',price_paise=2000))

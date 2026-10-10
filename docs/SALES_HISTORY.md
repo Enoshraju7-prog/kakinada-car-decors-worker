@@ -1,0 +1,13 @@
+# Sales history for the assistant
+
+Sales already persist in PostgreSQL; ending a day never clears them. The new `save_sales_report` tool reads existing posted sales for an inclusive IST date range, saves a report, and `read_report` reads it back as completion evidence. It can also filter by an exact sale/order ID. No sale, stock or customer record is changed.
+
+Examples: “Show sales today and yesterday, with items and totals”; “Show sales from 1 September 2026 to 30 September 2026”; “Find order <sale ID> within October 2026.” Today/yesterday use current IST time supplied to each worker attempt.
+
+Reports contain original product/SKU, unit, quantity, rate, line total, receipt/order IDs, payment method, purchase time and customer reference. Customer names, phones, addresses and encrypted receipt snapshots are excluded from model tools and saved reports. Partners can open customer details privately from the sales table. The optional question about sending customer names to AI has not been approved; references remain the default.
+
+Ranges are limited to 366 days per request; older years remain stored and can be queried separately. Results page at 50 sales. The worker follows `next_offset` or explicitly states incomplete coverage if its tool budget cannot cover all pages. Saved reports represent the observed history at creation; make a new task for refreshed results. Old paused runs can be continued within their remaining budget, or use a new task.
+
+VOID sales remain visible and are excluded from recorded sales totals. Posted returns show separately as returned quantities on original lines; reversed returns are excluded. Totals are original sale amounts, not net revenue, verified payment collections or refund settlements. Credit totals are separately identified.
+
+Verification: 69 backend tests passed, including IST midnight/month boundaries, historical queries, immutable item snapshots, private customer fields absent, VOID and returns, empty result readback, pagination and unchanged stock during agent reporting. Provider responses in the automated worker test are controlled. A separate real-provider test through the local partner UI completed with 3 model requests and 2 tools (`save_sales_report`, `read_report`). It found 7 sales for 9–10 October 2026, totaling INR 3,010, and saved report `a89afd18-34c6-53b7-902d-17d0db944566`. The visible sales table and private customer buttons were checked; no checkout or stock changes were made. Frontend build passed. A stale browser tab briefly requested an old lazy-loaded chunk after rebuilding; reloading loaded the current assets and the report displayed correctly.

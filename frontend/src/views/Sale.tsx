@@ -16,27 +16,38 @@ import { Panel, Field, Confirmation } from "@/components/shop-form";
 import { LineEditor, newEntry } from "@/components/line-editor";
 import { money, paise, whole } from "@/lib/api";
 import type { Product, Post } from "@/lib/types";
+import { CustomerDetails, type Customer } from "@/components/customer-details";
+import { SaleReceipt } from "@/components/sale-receipt";
 
 export default function Sale({
   products,
   post,
+  partner,
 }: {
   products: Product[];
   post: Post;
+  partner: boolean;
 }) {
   const [entries, setEntries] = useState(() =>
     products.length ? [newEntry(products, true)] : [],
   );
   const [payment, setPayment] = useState("cash");
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [review, setReview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [savedSaleId, setSavedSaleId] = useState<string | null>(null);
   function payload() {
     if (!entries.length)
       throw new Error("Add at least one product or service line.");
+    if (customer && (!customer.name.trim() || !customer.phone.trim()))
+      throw new Error(
+        "Enter the customer name and mobile number, or choose Walk-in.",
+      );
     return {
       payment,
+      ...(customer ? { customer } : {}),
       lines: entries.map((e) => ({
         product_id: e.productId,
         quantity: whole(e.quantity),
@@ -68,10 +79,12 @@ export default function Sale({
     setBusy(true);
     setError("");
     try {
-      await post("/api/sales", payload());
+      const saved = await post("/api/sales", payload());
+      setSavedSaleId(saved.id);
       setReview(false);
       setEntries(products.length ? [newEntry(products, true)] : []);
       setConfirmed(false);
+      setCustomer(null);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -80,6 +93,11 @@ export default function Sale({
   }
   return (
     <>
+      {savedSaleId ? (
+        <Panel title="Sale saved" note="Your bill is ready">
+          <SaleReceipt saleId={savedSaleId} />
+        </Panel>
+      ) : null}
       <div className="check-note">
         Credit sales remove handed-over stock too. Fitting charges never reduce
         stock.
@@ -94,6 +112,14 @@ export default function Sale({
               sale
               disabled={busy}
             />
+            {partner && (
+              <CustomerDetails
+                key={customer === null ? "walk-in" : "customer"}
+                value={customer}
+                onChange={setCustomer}
+                disabled={busy}
+              />
+            )}
             <div className="grid two form-lines">
               <Field label="Payment method">
                 <NativeSelect
@@ -164,6 +190,11 @@ export default function Sale({
             </div>
           ) : null}
           <DialogFooter>
+            <p className="text-sm">
+              {customer
+                ? `Customer: ${customer.name} · ${customer.phone}`
+                : "Walk-in customer"}
+            </p>
             <Button
               variant="outline"
               disabled={busy}

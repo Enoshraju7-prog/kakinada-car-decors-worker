@@ -48,7 +48,10 @@ def main():
     env_path = BACKEND / ".env"
     existing = env_path.read_text().splitlines() if env_path.exists() else []
     base = f"postgresql+psycopg://kcd_app:{quote(values['app'])}@127.0.0.1:5433/"
-    for name,value in {"KCD_DATABASE_URL":base+"kcd_demo","KCD_TEST_DATABASE_URL":base+"kcd_test","KCD_MODE":"demo"}.items():
+    from cryptography.fernet import Fernet
+    for name,value in {"KCD_DATABASE_URL":base+"kcd_demo","KCD_TEST_DATABASE_URL":base+"kcd_test","KCD_MODE":"demo",
+                       "KCD_CUSTOMER_ENCRYPTION_KEYS":Fernet.generate_key().decode(),
+                       "KCD_CUSTOMER_LOOKUP_KEY":secrets.token_hex(32)}.items():
         if not any(x.startswith(name+"=") for x in existing):existing.append(name+"="+value)
     env_path.write_text("\n".join(existing) + "\n")
     env_path.chmod(0o600)

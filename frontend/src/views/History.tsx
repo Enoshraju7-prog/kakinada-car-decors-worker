@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input";
 import { Field } from "@/components/shop-form";
 import { money, time, whole } from "@/lib/api";
 import type { Transaction, Post } from "@/lib/types";
+import { SaleCustomer } from "@/components/customer-details";
+import { SaleReceipt } from "@/components/sale-receipt";
 
 function ReturnForm({
   transaction,
@@ -147,7 +149,11 @@ export default function History({
             Reference: <code>{tx.id}</code>
             <br />
             Recorded by {tx.actor}
+            {tx.kind === "sale" && partner ? (
+              <SaleCustomer saleId={tx.id} />
+            ) : null}
             {tx.reversed ? " · REVERSED" : null}
+            {tx.kind === "sale" ? <SaleReceipt saleId={tx.id} /> : null}
             {tx.parent_id ? (
               <>
                 <br />

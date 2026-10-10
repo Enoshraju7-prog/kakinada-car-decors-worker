@@ -70,6 +70,24 @@ class WorkerTests(fixtures.PostgreSQLTests):
         self.assertEqual(tools,['query_inventory','save_shortage_report','read_report']);self.assertEqual(report['data'][0]['available'],0)
         self.assertEqual(result['evidence']['evidence_ids'],[report['id']])
 
+    def test_sales_history_tool_saved_readback_and_empty_result(self):
+        run = self.run_record('Show sales on 2025-01-01')
+        def respond(messages, info):
+            results = [p for m in messages for p in m.parts if isinstance(p,ToolReturnPart)]
+            if not results:
+                part = ToolCallPart('save_sales_report',{'start_date':'2025-01-01','end_date':'2025-01-01'},'sales')
+            elif results[-1].tool_name == 'save_sales_report':
+                part = ToolCallPart('read_report',{'report_id':results[-1].content['id']},'read')
+            else:
+                self.assertEqual(results[-1].content['data']['sales'],[])
+                part = ToolCallPart('final_result',{'summary':'No sales recorded on this date',
+                    'evidence_ids':[results[-1].content['id']],'unresolved':[]},'done')
+            return ModelResponse(parts=[part])
+        before = self.store.state()
+        asyncio.run(execute(self.engine,run,FunctionModel(respond)))
+        self.assertEqual(self.read_run(run['id'])['status'],'complete')
+        self.assertEqual(self.store.state(),before)
+
     def test_intake_proposal_readback_and_partner_price_ownership(self):
         run=self.run_record('Prepare new parts from my typed buying list')
         def respond(messages,info):

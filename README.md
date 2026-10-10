@@ -125,3 +125,9 @@ Next I want to simplify corrections, test more bills, improve mobile receiving a
 **Tech stack:** Python | FastAPI | Pydantic | PydanticAI | PostgreSQL | SQLAlchemy | Alembic | React | TypeScript | Vite | Tailwind | Azure AI | DigitalOcean
 
 Codex helped with implementation, debugging, testing and documentation. Components and references are listed in [provenance](docs/PROVENANCE.md).
+
+## Customer sales and receipts
+
+Partners can save a customer or use Walk-in checkout. Customer details are encrypted and reused by phone. Sales have printable A4 or 80 mm receipts, with customer details available only to partners. The assistant can read sales for a day or month, show sold items and order IDs, and save a verified report. Customer contacts stay outside AI tools.
+
+Setup now applies migrations through 0008. Local setup generates private customer-storage keys; cloud installations must generate and back up their own keys. Receipt address and phone are configured privately. See [customer checkout](docs/CUSTOMER_CHECKOUT.md), [receipts](docs/SALES_RECEIPTS.md) and [sales history](docs/SALES_HISTORY.md).

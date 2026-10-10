@@ -67,11 +67,20 @@ policies = table("reorder_policies", uid("variant_id", "variants.id", primary=Tr
 suppliers = table("suppliers", uid(primary=True), Column("name", Text, nullable=False), Column("gstin", Text, unique=True))
 aliases = table("supplier_aliases", uid("supplier_id", "suppliers.id", primary=True),
                 Column("alias_key", Text, primary_key=True), Column("confirmed_by", Text, nullable=False))
+customers = table("customers", uid(primary=True), Column("phone_key", Text, nullable=False, unique=True),
+                  Column("encrypted_details", Text, nullable=False), Column("created_at", Text, nullable=False),
+                  Column("updated_at", Text, nullable=False))
 documents = table("transactions", uid(primary=True), Column("sequence", BigInteger, Identity(), unique=True),
                   Column("kind", String(20), nullable=False), uid("parent_id", "transactions.id", nullable=True),
                   Column("actor", Text, nullable=False), Column("created_at", Text, nullable=False),
                   Column("data", JSONB, nullable=False), Column("total_paise", BigInteger, nullable=False, default=0),
                   CheckConstraint("kind IN ('purchase','receipt','sale','return','adjustment','reversal')"))
+customer_sales = table("customer_sales", uid("id", "transactions.id", primary=True), uid("customer_id", "customers.id"))
+Index("customer_sales_customer", customer_sales.c.customer_id)
+sale_receipts = table('sale_receipts', uid('id', 'transactions.id', primary=True),
+                      Column('number', Text, nullable=False, unique=True),
+                      Column('shop_header', JSONB, nullable=False),
+                      Column('encrypted_customer', Text))
 lines = table("lines", uid(primary=True), uid("transaction_id", "transactions.id"),
               Column("sequence", BigInteger, Identity(), unique=True), uid("product_id", "variants.id"),
               uid("parent_line_id", "lines.id", nullable=True), Column("quantity", BigInteger, nullable=False),
